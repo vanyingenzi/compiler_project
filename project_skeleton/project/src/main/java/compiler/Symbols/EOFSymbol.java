@@ -3,7 +3,7 @@ package compiler.Symbols;
 import compiler.Lexer.Symbol;
 
 public class EOFSymbol extends Symbol {
-    EOFSymbol(){
+    public EOFSymbol(){
         this.value = null;
     }
 }
