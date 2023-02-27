@@ -12,7 +12,31 @@ public class Lexer {
     public Lexer(Reader input) {
         this.reader = new PushbackReader(input);
     }
-    private Symbol getSymbol(LexerState state, StringBuilder stringBuilder) throws UnexpectedException {
+    public Symbol getNextSymbol(){
+        try{
+            StringBuilder stringBuilder = new StringBuilder();
+            LexerState state = new LexerState();
+            int character = reader.read();
+            boolean shouldContinue = initState(state, stringBuilder, (char) character);
+            while (character != -1 && shouldContinue) {
+                character = reader.read();
+                shouldContinue = updateState(state, stringBuilder, (char) character);
+            }
+            return getSymbolFromState(state, stringBuilder);
+        } catch (IOException ignored){
+            return new EOFSymbol();
+        }
+    }
+
+    /**
+     * Initializes the symbol based on the LexerState given in parameter and respects the priority in case of multiple
+     * possibilities.
+     * @param state The LexerState
+     * @param stringBuilder The stringBuilder
+     * @return Symbol
+     * @throws UnexpectedException
+     */
+    private Symbol getSymbolFromState(LexerState state, StringBuilder stringBuilder) throws UnexpectedException {
         if (state.nbOfPossibilities() == 0){
             if (stringBuilder.isEmpty()) return new EOFSymbol();
             else throw new UnexpectedException("The state has no possibilities left but the string is not empty :" + stringBuilder.toString());
@@ -29,12 +53,16 @@ public class Lexer {
             default -> new EOFSymbol();
         };
     }
-    private boolean isDigit(char c){
-        return (c >= '0' && c <= '9');
-    }
-    private boolean isAlphabet(char c){
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-    }
+    /**
+     * Initializes the state based on the first character read from the reader. This function is the one responsible for
+     * indicating the possibilities given the first read character. The updateState updates the state by eliminating possibilities
+     * only. This function returns true if we should continue reading from the reader.
+     * @param state The LexerState that will be modified
+     * @param stringBuilder The stringBuilder normally empty.
+     * @param character The character that was read from the PushBackReader
+     * @return A boolean indicating if we should continue reading from the reader.
+     * @throws IOException
+     */
     private boolean initState(LexerState state, StringBuilder stringBuilder, char character) throws IOException{
         if (character == '/'){
             int next = reader.read();
@@ -46,7 +74,7 @@ public class Lexer {
                 state.limitPossibilityTo(LexerState.SPECIAL_SYMBOL);
                 return false;
             }
-        } else if (isAlphabet(character)) {
+        } else if (Character.isAlphabetic(character)) {
             stringBuilder.append(character);
             if (Keyword.keywordStartsWidth(String.valueOf(character)))
                 state.addPossibility(LexerState.KEYWORD);
@@ -54,19 +82,36 @@ public class Lexer {
                 state.addPossibility(LexerState.BOOLEAN);
             state.addPossibility(LexerState.IDENTIFIER);
             return true;
+        } else if (Character.isDigit(character)) {
+            stringBuilder.append(character);
+            state.limitPossibilityTo(LexerState.NATURAL, LexerState.REAL);
+            return true;
+        } else if (character == '_'){
+            stringBuilder.append(character);
+            state.limitPossibilityTo(LexerState.IDENTIFIER);
+            return true;
+        } else if (character == ' ') { // To remove whitespace
+            int next = reader.read();
+            while (next != -1 && Character.isWhitespace(next)) next = reader.read();
+            return initState(state, stringBuilder, (char) next);
         }
         return false;
     }
+
+    /**
+     * This function implements the logic of updating the state, stringBuilder according to the character. It returns a boolean indicating if
+     * we should continue reading from the reader.
+     * @param state The LexerState that has been initialised using the initState method. This function can only update the state by removing possibilities.
+     * @param stringBuilder The stringBuilder.
+     * @param character The character that was just read from the reader.
+     * @return A boolean indicating if we should continue reading from the PushBackReader (object attribute)
+     * @throws IOException
+     */
     private boolean updateState(LexerState state, StringBuilder stringBuilder, char character) throws IOException {
-        if (character == '/'){
-            if (state.isPossible(LexerState.STRING)){
-                stringBuilder.append(character);
-                return true;
-            } else {
-                reader.unread(character);
-                return false;
-            }
-        } else if (isAlphabet(character)) {
+        if (character == '/' && state.isPossible(LexerState.STRING)){
+            stringBuilder.append(character);
+            return true;
+        } else if (Character.isAlphabetic(character)) {
             if (state.isPossible(LexerState.KEYWORD, LexerState.BOOLEAN)) {
                 stringBuilder.append(character);
                 if (!Keyword.keywordStartsWidth(stringBuilder.toString()))
@@ -77,28 +122,18 @@ public class Lexer {
             } else if (state.isPossible(LexerState.IDENTIFIER)) {
                 stringBuilder.append(character);
                 return true;
-            } else {
-                reader.unread(character);
-                return false;
             }
+        } else if (Character.isDigit(character) && state.isPossible(LexerState.IDENTIFIER, LexerState.NATURAL, LexerState.REAL, LexerState.STRING)) {
+            stringBuilder.append(character);
+            return true;
+        } else if (character == '_' && state.isPossible(LexerState.IDENTIFIER, LexerState.STRING)){
+            stringBuilder.append(character);
+            return true;
         }
+        reader.unread(character);
         return false;
     }
-    public Symbol getNextSymbol(){
-        try{
-            StringBuilder stringBuilder = new StringBuilder();
-            LexerState state = new LexerState();
-            int character = reader.read();
-            boolean shouldContinue = initState(state, stringBuilder, (char) character);
-            while (character != -1 && shouldContinue) {
-                character = reader.read();
-                shouldContinue = updateState(state, stringBuilder, (char) character);
-            }
-            return getSymbol(state, stringBuilder);
-        } catch (IOException ignored){
-            return new EOFSymbol();
-        }
-    }
+
 }
 
 class LexerState{
