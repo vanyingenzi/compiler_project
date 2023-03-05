@@ -3,12 +3,17 @@ package compiler.Symbols;
 import compiler.Lexer.Symbol;
 import compiler.Lexer.TrieST;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 public class Keyword extends Symbol {
     private static TrieST trieST;
     private static final String[] keywords = new String[]{
             "const","record", "var", "val", "proc", "for", "to", "by", "while", "if",
             "else", "return", "and", "or"
     };
+    private static final Set<String> keywordsSet = new HashSet<>(Arrays.asList(keywords));
     public Keyword(String value){ this.value = value; }
     private static void initTrie(){
         trieST = new TrieST();
@@ -24,5 +29,9 @@ public class Keyword extends Symbol {
     public static boolean keywordStartsWidth(String prefix){
         if (trieST == null) initTrie(); // Lazy initialisation
         return trieST.startsWith(prefix);
+    }
+
+    public static boolean isAKeyword(String candidate){
+        return keywordsSet.contains(candidate);
     }
 }

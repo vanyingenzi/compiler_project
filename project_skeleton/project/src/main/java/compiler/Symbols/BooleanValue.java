@@ -12,4 +12,8 @@ public class BooleanValue extends Value{
     public static boolean booleanStartsWith(String prefix){
         return "true".startsWith(prefix) || "false".startsWith(prefix);
     }
+
+    public static boolean isABooleanValue(String candidate){
+        return candidate.equals("true") || candidate.equals("false");
+    }
 }
