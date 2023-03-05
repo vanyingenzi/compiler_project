@@ -13,6 +13,11 @@ public class BooleanValue extends Value{
         return "true".startsWith(prefix) || "false".startsWith(prefix);
     }
 
+    /**
+     * Determines whether @candidate is a BooleanValue or not.
+     * @param candidate
+     * @return true if @candidate is a BooleanValue, false otherwise
+     */
     public static boolean isABooleanValue(String candidate){
         return candidate.equals("true") || candidate.equals("false");
     }

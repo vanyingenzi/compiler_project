@@ -119,7 +119,6 @@ public class TestLexer {
             Lexer lexer = new Lexer(reader);
             Symbol symbol = lexer.getNextSymbol();
             assertNotNull(symbol);
-            System.out.println(symbol.getClass());
             assertFalse(symbol instanceof NaturalNumberValue);
         }
     }

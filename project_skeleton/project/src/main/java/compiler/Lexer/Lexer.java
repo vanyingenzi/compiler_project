@@ -5,51 +5,44 @@ import java.io.IOException;
 import java.io.PushbackReader;
 import java.io.Reader;
 import java.rmi.UnexpectedException;
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.HashSet;
-import java.util.Set;
 
 
 public class Lexer {
     private final PushbackReader reader;
-
-    final private Set<Character> special_symbols = new HashSet<>(Arrays.asList(new Character[]{'=', '+', '-', '*', '/', '%', '<', '>', '(', ')', '{', '}', '[', ']', '.', ';', ','}));
-    final private Set<Character> starting_special_symbols = new HashSet<>(Arrays.asList(new Character[]{'=', '<', '>', '/'})); // Also '/' because '//' is for comment !
     public Lexer(Reader input) {
         this.reader = new PushbackReader(input);
     }
+
+    /**
+     * Gets the next Symbol from the input reader of the Lexer.
+     * @return next Symbol
+     */
     public Symbol getNextSymbol(){
         try{
             StringBuilder stringBuilder = new StringBuilder();
             LexerState state = new LexerState();
-            int character = reader.read();
-            boolean shouldContinue = initState(state, stringBuilder, (char) character);
-            character = reader.read();
-            while (shouldContinue && character != -1) {
-                shouldContinue = updateState(state, stringBuilder, (char) character);
-                character = reader.read();
+            boolean shouldContinue = initState(state, stringBuilder);
+            while (shouldContinue) {
+                shouldContinue = updateState(state, stringBuilder);
             }
             return getSymbolFromState(state, stringBuilder);
-        } catch (IOException ignored){
+        } catch (IOException ignored){ // TODO: Do something with the exception
+//            System.out.println(ignored);
             return new EOFSymbol();
         }
     }
 
     /**
-     * Initializes the symbol based on the LexerState given in parameter and respects the priority in case of multiple
-     * possibilities.
+     * Gets the corresponding Symbol from the @state of the Lexer. Assigns the content of @stringBuilder as its value.
      * @param state The LexerState
      * @param stringBuilder The stringBuilder
-     * @return Symbol
+     * @return Symbol with as value the content of @stringBuilder.
      * @throws UnexpectedException
      */
     private Symbol getSymbolFromState(LexerState state, StringBuilder stringBuilder) throws UnexpectedException {
         if (state.nbOfPossibilities() == 0) {
-            if (stringBuilder.isEmpty())
-                return new EOFSymbol(); //TODO: Add state EOF to the state, to avoid the case of an error with empty stringbuilder
-            else
-                throw new UnexpectedException("The state has no possibilities left but the string is not empty :" + stringBuilder.toString());
+            throw new UnexpectedException("Error: The state has no possibilities left. Content of the string buffer: " + stringBuilder.toString());
         }
 
         String symbol = stringBuilder.toString();
@@ -67,56 +60,45 @@ public class Lexer {
             return new StringValue(symbol);
         } else if (state.isSomePossible(LexerState.SPECIAL_SYMBOL)) {
             return SpecialSymbol.createSymbol(symbol);
+        } else if (state.isSomePossible(LexerState.EOF)) {
+            return new EOFSymbol();
         } else {
             throw new UnexpectedException("The state does not match any possibility.");
         }
     }
 
-    private void setupState(LexerState state, StringBuilder stringBuilder) throws IOException{
+    /**
+     * Initializes the state based on the first characters read from the reader. This function is the one responsible for
+     * indicating the possibilities given the first read character(s). Whitespaces, comments, StringValues and SpecialSymbols
+     * are read entirely in this function (without passing by the function updateState()).
+     * @param state The LexerState that will be modified
+     * @param stringBuilder The stringBuilder normally empty
+     * @return true if we should continue reading, false otherwise
+     * @throws IOException
+     */
+    private boolean initState(LexerState state, StringBuilder stringBuilder) throws IOException{
+        // Verify if EOF or do some cleaning
         int character = reader.read();
         if (character == -1){
             state.limitPossibilityTo(LexerState.EOF);
+            return false;
         }
-    }
-
-    /**
-     * Initializes the state based on the first character read from the reader. This function is the one responsible for
-     * indicating the possibilities given the first read character. The updateState updates the state by eliminating possibilities
-     * only. This function returns true if we should continue reading from the reader.
-     * @param state The LexerState that will be modified
-     * @param stringBuilder The stringBuilder normally empty.
-     * @param character The character that was read from the PushBackReader
-     * @return A boolean indicating if we should continue reading from the reader.
-     * @throws IOException
-     */
-    private boolean initState(LexerState state, StringBuilder stringBuilder, char character) throws IOException{
-        // Remove white space, tab and new line
-        if (Character.isWhitespace(character)) {
-            int next_character = reader.read();
-            while (next_character != -1 && Character.isWhitespace((char) next_character)) {
-                next_character = reader.read();
-            }
-            return initState(state, stringBuilder, (char) next_character);
+        if (skipIfWhiteSpace(character)) {
+            return initState(state, stringBuilder);
+        }
+        if (skipIfComment(character)){
+            return initState(state, stringBuilder);
         }
 
-        stringBuilder.append(character); //If not WhiteSpace, character is always added to the StringBuilder
-        if (special_symbols.contains(character)){
+        stringBuilder.append((char) character); //If not WhiteSpace, character is always added to the StringBuilder
+
+        if(SpecialSymbol.isSpecialSymbol(character)){
             state.limitPossibilityTo(LexerState.SPECIAL_SYMBOL);
-            if (starting_special_symbols.contains(character)){
-                int next_character = reader.read();
-                if(character == '/' && (char) next_character == '/'){  // Skip comments
-                    while (next_character != -1 && (char) next_character != '\n'){
-                        next_character = reader.read();
-                    }
-                    state.removePossibilities(LexerState.SPECIAL_SYMBOL); //Reset state
-                    stringBuilder.deleteCharAt(0); // Character is removed if it was a comment
-                    return initState(state, stringBuilder, (char) next_character);
-                } else if ((character == '=' && next_character == '=') || (character == '<' && (next_character == '=' || next_character == '>')) || (character == '>' && next_character == '=')) {
-                    stringBuilder.append(next_character);
-                    return false;
-                }
-                reader.unread(next_character); // It's a single special character
-            }
+            putLongestSpecialSymbol(character, stringBuilder);
+            return false;
+        } else if (character == '"') {
+            stringBuilder.deleteCharAt(0); // Starting/ending '"' should not be included in.
+            putString(stringBuilder);
             return false;
         } else if (Character.isDigit(character)) {
             state.limitPossibilityTo(LexerState.NATURAL); // REAL is only possible if there is a dot (.)
@@ -127,64 +109,148 @@ public class Lexer {
         } else if (character == '_') {
             state.limitPossibilityTo(LexerState.IDENTIFIER);
             return true;
-        } else if (character == '"') { //TODO: for string also do all in one since we know it's a string
-            stringBuilder.deleteCharAt(0); // " not need since we know it's a string
-            state.limitPossibilityTo(LexerState.STRING);
+        }
+        throw new IOException("Error: No initiation of state possible.");
+    }
+
+    /**
+     * Implements the logic of updating the @state and @stringBuilder according to the next character and
+     * the current @state.
+     * @param state The LexerState initialised using the initState method that will be updated
+     * @param stringBuilder The stringBuilder that may be updated with next character if part of the same symbol
+     * @return true if we should continue reading, false otherwise
+     * @throws IOException
+     */
+    private boolean updateState(LexerState state, StringBuilder stringBuilder) throws IOException {
+        int character = reader.read();
+
+        if (isStoppingCharacter(state, character)){
+            reader.unread(character);
+            return false;
+        }
+
+        stringBuilder.append((char) character);
+        if (Character.isDigit(character) && state.isSomePossible(LexerState.IDENTIFIER, LexerState.NATURAL, LexerState.REAL)){
             return true;
+        } else if (Character.isAlphabetic(character) && state.isSomePossible(LexerState.KEYWORD, LexerState.BOOLEAN, LexerState.IDENTIFIER)){
+            return true;
+        } else if (character == '_' && state.isSomePossible(LexerState.IDENTIFIER)) {
+            state.limitPossibilityTo(LexerState.IDENTIFIER);
+            return true;
+        } else if (character == '.' && state.isSomePossible(LexerState.NATURAL)) {
+            state.limitPossibilityTo(LexerState.REAL); // Verifications are done in function isStoppingCharacter()
+            return true;
+        }
+        state.limitPossibilityTo();
+        return false;
+    }
+
+    /**
+     * Skips all white spaces (space, tabulation /t and new line /n), if there has.
+     * @param character The integer value of the starting character
+     * @return true if there was whitespace, false otherwise
+     * @throws IOException
+     */
+    private boolean skipIfWhiteSpace(int character) throws IOException{
+        boolean isWhiteSpace = Character.isWhitespace(character);
+        if(isWhiteSpace) {
+            while (character != -1 && Character.isWhitespace(character)) {
+                character = reader.read();
+            }
+            reader.unread(character);
+        }
+        return isWhiteSpace;
+    }
+
+    /**
+     * Skips the comment (starting with //) if there is one.
+     * @param character The integer value of the starting character
+     * @return true if there was a comment, false otherwise
+     * @throws IOException
+     */
+    private boolean skipIfComment(int character) throws IOException{
+        if (character == '/'){
+            character = reader.read();
+            if (character == '/'){
+                while (character != -1 && character != '\n'){
+                    character = reader.read();
+                }
+                return true;
+            }
+            reader.unread(character);
         }
         return false;
     }
 
     /**
-     * This function implements the logic of updating the state, stringBuilder according to the character. It returns a boolean indicating if
-     * we should continue reading from the reader.
-     * @param state The LexerState that has been initialised using the initState method. This function can only update the state by removing possibilities.
-     * @param stringBuilder The stringBuilder.
-     * @param character The character that was just read from the reader.
-     * @return A boolean indicating if we should continue reading from the PushBackReader (object attribute)
+     * Puts the longest matching special symbol into the @stringBuilder.
+     * @param character The starting character, already into the @stringBuilder
+     * @param stringBuilder
      * @throws IOException
      */
-    private boolean updateState(LexerState state, StringBuilder stringBuilder, char character) throws IOException {
-        stringBuilder.append(character);
-        if((Character.isWhitespace(character) || special_symbols.contains(character)) && !state.isSomePossible(LexerState.STRING)) { // Stopping characters (except in Strings)
-            if (character == '.' && state.isSomePossible(LexerState.NATURAL)) { // dot (.) can be an exception for Natural
-                int next_character = reader.read();
-                reader.unread(next_character);
-                if (Character.isDigit(next_character)) { // Will be a Real
-                    state.limitPossibilityTo(LexerState.REAL);
-                    return true;
-                }
-            }
-            // Character is part of a new symbol
-            stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-            reader.unread(character);
-            return false;
-        } else if (character == '\\' && state.isSomePossible(LexerState.STRING)) { //TODO: Check if we have to do it so or not (maybe just rush the string)
-            int next_character = reader.read();
-            if (next_character == '"'){
+    private void putLongestSpecialSymbol(int character, StringBuilder stringBuilder) throws IOException{
+        if (SpecialSymbol.maybeComplexSpecialSymbol(character)){
+            character = reader.read();
+            stringBuilder.append((char) character);
+            if(!SpecialSymbol.isComplexSpecialSymbol(stringBuilder.toString())) {
                 stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-                stringBuilder.append('\"');
-                return true;
+                reader.unread(character);
             }
-            return true;
-        } else if (character == '"' && state.isSomePossible(LexerState.STRING)) {
-            stringBuilder.deleteCharAt(stringBuilder.length() - 1); // Not needed since we are in a String
-            return false;
-        } else if (Character.isDigit(character) && state.isSomePossible(LexerState.IDENTIFIER, LexerState.NATURAL, LexerState.REAL, LexerState.STRING)) {
-            return true;
-        } else if (Character.isAlphabetic(character) && state.isSomePossible(LexerState.KEYWORD, LexerState.BOOLEAN, LexerState.IDENTIFIER, LexerState.STRING)){
-            return true;
-        } else if (character == '_' && state.isSomePossible(LexerState.IDENTIFIER)) {
-            return true;
-        } else if (state.isSomePossible(LexerState.STRING)) {
-            return true;
-        } // Something went wrong
-        state.limitPossibilityTo();
-        return false;
+        }
     }
 
-    private void skipWhiteSpace(LexerState state) throws IOException{
+    /**
+     * Puts the string (starting and ending with '"', not '\"') into the @stringBuilder (without the starting/ending ").
+     * @param stringBuilder should be empty
+     * @throws IOException
+     */
+    private void putString(StringBuilder stringBuilder) throws IOException{
+        int character = reader.read();
+        while(character != 1 && character != '"'){
+            if (character == '\\'){ // The sequence \\" should be treated as a '"' inside a string
+                int next_character = reader.read();
+                if (next_character == '"'){
+                    stringBuilder.append('"');
+                }
+                else {
+                    stringBuilder.append((char) character);
+                    reader.unread(next_character);
+                }
+            }
+            character = reader.read();
+        }
+        if (character == -1){
+            throw new IOException("Error: EOF reached before ending string.");
+        }
+    }
 
+    /**
+     * Verifies if @character is port of a new Symbol, stopping the current Symbol, based on the current @state.
+     * NOTE: Checking that the character dot (.) is part of a REAL or not is done here.
+     * @param state
+     * @param character
+     * @return true if @character is a stopping character, false otherwise
+     * @throws IOException
+     */
+    private boolean isStoppingCharacter(LexerState state, int character) throws IOException{
+        if (character == -1){
+            return true;
+        }
+        if (Character.isWhitespace(character)) {
+            return true;
+        } else if (SpecialSymbol.isSpecialSymbol(character)) {
+            if (character == '.' && state.isSomePossible(LexerState.NATURAL)){
+                character = reader.read();
+                if (Character.isDigit(character)){
+                    return false; // dot (.) is part of a REAL, not a stopping character
+                }
+                reader.unread(character);
+            }
+            return true;
+        } else if (character == '"'){
+            return true;
+        }
+        return false;
     }
 }
 
@@ -203,11 +269,16 @@ class LexerState{
     LexerState(){
         bitSet = new BitSet(NUMBERS_OF_SUPPORTED_SYMBOLS);
     }
+
+    /**
+     * Gives the number of possibilities for the state of the Lexer.
+     * @return number of possible states
+     */
     int nbOfPossibilities(){
         return bitSet.cardinality();
     }
     /**
-     * This function adds the given possibilities to the state
+     * Adds the given possibilities to the state.
      * @param possibilities : variable arguments constant as defined above
      */
     void addPossibility(int... possibilities){
@@ -215,7 +286,7 @@ class LexerState{
             bitSet.set(idx);
     }
     /**
-     * This function limits the possibilities of the state to only the ones given as variable arguments
+     * Limits the possibilities of the state to only the ones given as variable arguments.
      * @param possibilities : variable arguments constant as defined above
      */
     void limitPossibilityTo(int... possibilities){
@@ -223,7 +294,7 @@ class LexerState{
         addPossibility(possibilities);
     }
     /**
-     * This function removes the given variable arguments possibilities from the state
+     * Removes the given variable arguments possibilities from the state.
      * @param possibilities : variable arguments constant as defined above
      */
     void removePossibilities(int... possibilities){
@@ -231,9 +302,9 @@ class LexerState{
             bitSet.clear(idx);
     }
     /**
-     * Checks if at least one of the given possibilities is possible in the state.
+     * Checks if at least one of the given @possibilities is possible in the state.
      * @param possibilities : variable arguments constant as defined above
-     * @return boolean indicating
+     * @return true if at least one @possibilities is possible, false otherwise
      */
     boolean isSomePossible(int... possibilities){
         for (Integer possibility: possibilities)
@@ -242,9 +313,9 @@ class LexerState{
     }
 
     /**
-     * Checks if all the given possibilities is possible in the state.
+     * Checks if all the given @possibilities are possible in the state.
      * @param possibilities : variable arguments constant as defined above
-     * @return boolean indicating
+     * @return true if all @possibilities are possible, false otherwise
      */
     boolean isAllPossible(int... possibilities){
         for (Integer possibility: possibilities)

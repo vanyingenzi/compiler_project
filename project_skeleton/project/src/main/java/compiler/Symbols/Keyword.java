@@ -31,6 +31,11 @@ public class Keyword extends Symbol {
         return trieST.startsWith(prefix);
     }
 
+    /**
+     * Determines whether @candidate is a Keyword.
+     * @param candidate
+     * @return true if @candidate is a Keyword, false otherwise
+     */
     public static boolean isAKeyword(String candidate){
         return keywordsSet.contains(candidate);
     }
