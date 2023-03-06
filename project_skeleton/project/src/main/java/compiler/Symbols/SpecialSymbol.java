@@ -1,6 +1,7 @@
 package compiler.Symbols;
 
 import compiler.Lexer.Symbol;
+import compiler.Lexer.UnauthorizedLangTokenException;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -17,7 +18,7 @@ public abstract class SpecialSymbol extends Symbol {
         {
             case "=", "+", "-", "*", "/", "%", "==", "<>", "<", ">", "<=", ">=" -> new OperatorSpecialSymbol(string);
             case "(", ")", "{", "}", "[", "]", ".", ";", "," -> new SyntaxSpecialSymbol(string);
-            default -> throw new UnsupportedOperationException("Got unexpected symbol : " + string);
+            default -> throw new UnauthorizedLangTokenException("Got unexpected symbol : " + string);
         };
     }
 
