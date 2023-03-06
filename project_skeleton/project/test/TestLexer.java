@@ -301,6 +301,107 @@ public class TestLexer {
         }
     }
 
+    @Test
+    public void testCornerCase_NumberAndLettersWithoutSpace(){
+        String input = "32hello";
+        Symbol[] expected = new Symbol[]{
+                new NaturalNumberValue("32"),
+                new Identifier("hello"),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
+
+    @Test
+    public void testGeneral_comments(){
+        String input = "some code //This is a comment \\t \\n # this is food";
+        Symbol[] expected = new Symbol[]{
+                new Identifier("some"),
+                new Identifier("code"),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
+
+    @Test
+    public void testCornerCase_NumbersAndDots(){
+        // Digits and 1 dot
+        String input = "90.";
+        Symbol[] expected = new Symbol[]{
+                new NaturalNumberValue("90"),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+        //Digits and 2 dots
+        input = "90..";
+        expected = new Symbol[]{
+                new NaturalNumberValue("90"),
+                SpecialSymbol.createSymbol("."),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        reader = new StringReader(input);
+        lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+        //Alternation between digits ans dots
+        input = ".90.81.50..689.";
+        expected = new Symbol[]{
+                SpecialSymbol.createSymbol("."),
+                new RealNumberValue("90.81"),
+                SpecialSymbol.createSymbol("."),
+                new NaturalNumberValue("50"),
+                SpecialSymbol.createSymbol("."),
+                SpecialSymbol.createSymbol("."),
+                new NaturalNumberValue("689"),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        reader = new StringReader(input);
+        lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
 
 
 
