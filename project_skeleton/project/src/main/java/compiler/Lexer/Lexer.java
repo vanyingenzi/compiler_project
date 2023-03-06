@@ -120,6 +120,9 @@ public class Lexer {
     private boolean updateState(LexerState state, StringBuilder stringBuilder) throws IOException {
         int character = reader.read();
 
+        if (character == -1){
+            return false;
+        }
         if (isStoppingCharacter(state, character)){
             reader.unread(character);
             return false;
@@ -154,7 +157,9 @@ public class Lexer {
             while (character != -1 && Character.isWhitespace(character)) {
                 character = reader.read();
             }
-            reader.unread(character);
+            if(character != -1) {
+                reader.unread(character);
+            }
         }
         return isWhiteSpace;
     }
@@ -174,7 +179,9 @@ public class Lexer {
                 }
                 return true;
             }
-            reader.unread(character);
+            if (character != -1) {
+                reader.unread(character);
+            }
         }
         return false;
     }
@@ -236,15 +243,14 @@ public class Lexer {
      * @throws IOException on Reader
      */
     private boolean isStoppingCharacter(LexerState state, int character) throws IOException{
-        if (character == -1){
-            return true;
-        }
         if (Character.isWhitespace(character)) {
             return true;
         } else if (SpecialSymbol.isSpecialSymbol(character)) {
             if (character == '.' && state.isSomePossible(LexerState.NATURAL)){
                 character = reader.read();
-                reader.unread(character);
+                if (character != -1) {
+                    reader.unread(character);
+                }
                 return !Character.isDigit(character); // dot (.) is part of a REAL, not a stopping character
             }
             return true;
