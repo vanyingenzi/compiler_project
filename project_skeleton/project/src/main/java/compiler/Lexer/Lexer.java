@@ -18,7 +18,7 @@ public class Lexer {
      * Gets the next Symbol from the input reader of the Lexer.
      * @return next Symbol
      */
-    public Symbol getNextSymbol(){
+    public Symbol getNextSymbol() throws UnauthorizedLangException {
         try{
             StringBuilder stringBuilder = new StringBuilder();
             LexerState state = new LexerState();
@@ -27,9 +27,8 @@ public class Lexer {
                 shouldContinue = updateState(state, stringBuilder);
             }
             return getSymbolFromState(state, stringBuilder);
-        } catch (IOException ignored){ // TODO: Do something with the exception
-//            System.out.println(ignored);
-            return new EOFSymbol();
+        } catch (IOException ignored){
+            throw new RuntimeException("An exception occurred with the reader.");
         }
     }
 
@@ -207,7 +206,7 @@ public class Lexer {
      */
     private void putString(StringBuilder stringBuilder) throws IOException{
         int character = reader.read();
-        while(character != 1 && character != '"'){
+        while(character != -1 && character != '"'){
             if (character == '\\'){ // The sequence \\" should be treated as a '"' inside a string
                 int next_character = reader.read();
                 if (next_character == '"'){
