@@ -2,12 +2,18 @@ import compiler.Lexer.Symbol;
 import compiler.Lexer.UnauthorizedLangTokenException;
 import compiler.Symbols.*;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.Arrays;
+import java.util.Collection;
+
 import compiler.Lexer.Lexer;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.junit.runners.Suite;
 
 
@@ -15,6 +21,8 @@ import static org.junit.Assert.*;
 
 
 public class TestLexer {
+    @Rule
+    public final ExpectedException exception = ExpectedException.none();
     @Test
     public void testKeyword_simpleCase() {
         String[] keywords = Keyword.getKeywords();
@@ -103,7 +111,10 @@ public class TestLexer {
     @Test
     public void testIdentifier_notIdentifier(){
         String[] notIdentifiers = new String[]{
-                "432", "\"aString\"", "=", "689_startwithnumber"
+                "432",
+                "\"aString\"",
+                "=",
+                "689_startwithnumber"
         };
         for (String input : notIdentifiers) {
             StringReader reader = new StringReader(input);
@@ -214,7 +225,7 @@ public class TestLexer {
         }
     }
 
-    @Test(expected = UnauthorizedLangTokenException.class)
+    @Test
     public void testStringValue_notStringValue(){
         String[] stringValues = new String[]{
                 "\"Test of my string",
@@ -224,11 +235,12 @@ public class TestLexer {
             StringReader reader = new StringReader(input);
             Lexer lexer = new Lexer(reader);
             try {
-                System.out.println(input);
-                Symbol symbol = lexer.getNextSymbol();
-//                assertThrows(UnauthorizedLangTokenException.class, );
+                lexer.getNextSymbol();
+                fail("Should have throw an UnauthorizedLangTokenException.");
             } catch (IOException ioException) {
                 fail("IOException was thrown: " + ioException);
+            } catch (UnauthorizedLangTokenException ignored){
+                // Nothing
             }
         }
     }
