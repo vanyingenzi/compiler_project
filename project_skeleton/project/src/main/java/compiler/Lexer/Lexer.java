@@ -11,7 +11,7 @@ import java.util.BitSet;
 public class Lexer {
     private final PushbackReader reader;
     public Lexer(Reader input) {
-        this.reader = new PushbackReader(input);
+        this.reader = new PushbackReader(input, 2);
     }
 
     /**
@@ -141,7 +141,8 @@ public class Lexer {
             state.limitPossibilityTo(LexerState.REAL); // Verifications are done in function isStoppingCharacter()
             return true;
         }
-        state.limitPossibilityTo();
+        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+        reader.unread(character); // No matching. It's a new Symbol.
         return false;
     }
 

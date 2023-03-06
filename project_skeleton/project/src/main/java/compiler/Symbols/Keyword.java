@@ -39,4 +39,8 @@ public class Keyword extends Symbol {
     public static boolean isAKeyword(String candidate){
         return keywordsSet.contains(candidate);
     }
+
+    public static String[] getKeywords(){
+        return keywords;
+    }
 }

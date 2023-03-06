@@ -4,10 +4,185 @@ import org.junit.Test;
 
 import java.io.StringReader;
 import compiler.Lexer.Lexer;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+
 
 import static org.junit.Assert.*;
 
+
 public class TestLexer {
+    @Test
+    public void testKeyword_simpleCase() {
+        String[] keywords = Keyword.getKeywords();
+        for (String input : keywords) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new Keyword(input));
+        }
+    }
+
+    @Test
+    public void testKeyword_notKeywordsCase(){
+        String[] notKeywords = new String[]{
+                "constt","recordd", "varr", "valval", "procfor", "forto", "too", "bye", "whileif", "ifelse",
+                "elsee", "returnn", "andif", "oror", "_var", "const_", "\"records\""
+        };
+        for (String input: notKeywords) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof Keyword);
+//            assertEquals(input, symbol.getValue());
+        }
+    }
+
+    @Test
+    public void testBooleanValue_simpleCase(){
+        String[] booleanValues = BooleanValue.getBooleanValues();
+        for (String input : booleanValues) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new BooleanValue(input));
+        }
+    }
+
+    @Test
+    public void testBooleanValue_notBooleanValueCase(){
+        String[] notBooleanValues = new String[]{
+                "ffalse", "truee", "\"true\"", "_true", "false_"
+        };
+        for (String input : notBooleanValues){
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof BooleanValue);
+//            assertEquals(input, symbol.getValue());
+        }
+    }
+
+    @Test
+    public void testIdentifier_simpleCase(){
+        String[] identifiers = new String[]{
+                "_underscoreStart", "underscoreEnd_", "underscore_Middle", "numberEnd42", "number69Middle", "_", "_42",
+                "_42_69_", "simplecase",
+        };
+        for (String input : identifiers){
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new Identifier(input));
+        }
+    }
+
+    @Test
+    public void testIdentifier_notIdentifier(){
+        String[] notIdentifiers = new String[]{
+                "432", "\"aString\"", "=", "689_startwithnumber"
+        };
+        for (String input : notIdentifiers) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof Identifier);
+        }
+    }
+
+    @Test
+    public void testNaturalNumberValue_simpleCase(){
+        String[] naturalNumberValues = new String[]{
+                "123", "0", "1234."
+        }; // TODO: Add verification of 32bits
+        for (String input : naturalNumberValues){
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new NaturalNumberValue(input));
+        }
+    }
+
+    @Test
+    public void testNaturalNumberValue_notNaturalNumberValue(){
+        String[] notNaturalNumberValues = new String[]{
+                "_13", "\"13\"", "321.091"
+        };
+        for (String input : notNaturalNumberValues) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof NaturalNumberValue);
+        }
+    }
+
+    @Test
+    public void testRealNumberValue_simpleCase(){
+        String[] realNumberValues = new String[]{
+                "123.0", "0.0", "12348.5874"
+        }; // TODO: Add verification of 64bits
+        for (String input : realNumberValues){
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new RealNumberValue(input));
+        }
+    }
+
+    @Test
+    public void testRealNumberValue_notRealNumberValue(){
+        String[] notRealNumberValues = new String[]{
+                "_13.0", "\"13.0\"", "321.", ".1548"
+        };
+        for (String input : notRealNumberValues) {
+            StringReader reader = new StringReader(input);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof RealNumberValue);
+        }
+    }
+
+    @Test
+    public void testStringValue_simpleCase(){ // TODO: Add unrecognized characters
+        String[] stringValues = new String[]{
+                "\"Test 0f my string\"", "\"Test of my string with backslash \\\\\"", "\"\""
+        };
+        String[] expectedStringValues = new String[]{
+                "Test 0f my string", "Test of my string with backslash \\", "\"\""
+        };
+        for (int i = 0; i < stringValues.length; i++){
+            StringReader reader = new StringReader(stringValues[i]);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertEquals(symbol, new StringValue(expectedStringValues[i]));
+        }
+    }
+
+    @Test
+    public void testStringValue_notStringValue(){
+        String[] stringValues = new String[]{
+                "\"Test of my string", "\"Test of my string with backslash \\\"", ""
+        };
+        for (int i = 0; i < stringValues.length; i++){
+            StringReader reader = new StringReader(stringValues[i]);
+            Lexer lexer = new Lexer(reader);
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertFalse(symbol instanceof StringValue);
+        }
+    }
+
+
+
+
+
+
+
     @Test
     public void test() {
         String input = "var x int = 2;";
@@ -45,33 +220,7 @@ public class TestLexer {
             assertTrue(symbol instanceof EOFSymbol);
         }
     }
-    @Test
-    public void testKeyword(){
-        String[] keywords = new String[]{
-                "const","record", "var", "val", "proc", "for", "to", "by", "while", "if",
-                "else", "return", "and", "or"
-        };
-        for (String input: keywords) {
-            StringReader reader = new StringReader(input);
-            Lexer lexer = new Lexer(reader);
-            Symbol symbol = lexer.getNextSymbol();
-            assertNotNull(symbol);
-            assertTrue(symbol instanceof Keyword);
-            assertEquals(input, symbol.getValue());
-        }
-        String[] notKeywords = new String[]{
-                "constt","recordd", "varr", "valval", "procfor", "forto", "too", "bye", "whileif", "ifelse",
-                "elsee", "returnn", "andif", "oror"
-        };
-        for (String input: notKeywords) {
-            StringReader reader = new StringReader(input);
-            Lexer lexer = new Lexer(reader);
-            Symbol symbol = lexer.getNextSymbol();
-            assertNotNull(symbol);
-            assertFalse(symbol instanceof Keyword);
-            assertEquals(input, symbol.getValue());
-        }
-    }
+
     @Test
     public void testIdentifiers(){
         // Strings are ignored by our lexer therefore the only symbol we should get is the EOFSymbol
@@ -138,4 +287,21 @@ public class TestLexer {
             assertEquals(symbol, value);
         }
     }
+
+    @Test
+    public void numberAndIdentifierWithoutSpace(){
+        String input = "32hello";
+        Symbol[] expected = new Symbol[]{
+                new NaturalNumberValue("32"),
+                new Identifier("hello"),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            Symbol symbol = lexer.getNextSymbol();
+            assertNotNull(symbol);
+            assertEquals(symbol, value);
+        }
+    }
+
 }

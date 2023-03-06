@@ -21,6 +21,13 @@ public abstract class SpecialSymbol extends Symbol {
         };
     }
 
+    public static Character[] getSingleSpecialSymbol(){
+        return singleSpecialSymbol;
+    }
+    public static String[] getComplexSpecialSymbol(){
+        return complexSpecialSymbol;
+    }
+
     /**
      * Determines whether @candidate is a SpecialSymbol.
      * @param candidate The integer value of the candidate character

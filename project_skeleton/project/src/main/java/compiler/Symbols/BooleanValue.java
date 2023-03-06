@@ -1,6 +1,7 @@
 package compiler.Symbols;
 
 public class BooleanValue extends Value{
+    private static String[] booleanValues = new String[]{"true", "false"};
     public BooleanValue(String value){
         this.value = Boolean.valueOf(value);
     }
@@ -20,5 +21,9 @@ public class BooleanValue extends Value{
      */
     public static boolean isABooleanValue(String candidate){
         return candidate.equals("true") || candidate.equals("false");
+    }
+
+    public static String[] getBooleanValues(){
+        return booleanValues;
     }
 }
