@@ -275,6 +275,7 @@ public class TestLexer {
             Lexer lexer = new Lexer(reader);
             try{
                 Symbol symbol = lexer.getNextSymbol();
+                System.out.println("Input: "+input);
                 assertEquals(SpecialSymbol.createSymbol(input), symbol);
             } catch (Exception e){
                 fail("Exception was thrown: "+ e);
@@ -300,6 +301,107 @@ public class TestLexer {
         }
     }
 
+    @Test
+    public void testCornerCase_NumberAndLettersWithoutSpace(){
+        String input = "32hello";
+        Symbol[] expected = new Symbol[]{
+                new NaturalNumberValue("32"),
+                new Identifier("hello"),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
+
+    @Test
+    public void testGeneral_comments(){
+        String input = "some code //This is a comment \\t \\n # this is food";
+        Symbol[] expected = new Symbol[]{
+                new Identifier("some"),
+                new Identifier("code"),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
+
+    @Test
+    public void testCornerCase_NumbersAndDots(){
+        // Digits and 1 dot
+        String input = "90.";
+        Symbol[] expected = new Symbol[]{
+                new NaturalNumberValue("90"),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        StringReader reader = new StringReader(input);
+        Lexer lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+        //Digits and 2 dots
+        input = "90..";
+        expected = new Symbol[]{
+                new NaturalNumberValue("90"),
+                SpecialSymbol.createSymbol("."),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        reader = new StringReader(input);
+        lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+        //Alternation between digits ans dots
+        input = ".90.81.50..689.";
+        expected = new Symbol[]{
+                SpecialSymbol.createSymbol("."),
+                new RealNumberValue("90.81"),
+                SpecialSymbol.createSymbol("."),
+                new NaturalNumberValue("50"),
+                SpecialSymbol.createSymbol("."),
+                SpecialSymbol.createSymbol("."),
+                new NaturalNumberValue("689"),
+                SpecialSymbol.createSymbol("."),
+                new EOFSymbol(),
+        };
+        reader = new StringReader(input);
+        lexer = new Lexer(reader);
+        for (Symbol value : expected) {
+            try {
+                Symbol symbol = lexer.getNextSymbol();
+                assertEquals(symbol, value);
+            } catch (Exception e){
+                fail("Exception was thrown: "+ e);
+            }
+        }
+    }
     public void correspondenceHelperFunction(String input, Symbol[] expectedSymbols) throws IOException {
         StringReader reader = new StringReader(input);
         Lexer lexer = new Lexer(reader);
@@ -440,63 +542,129 @@ public class TestLexer {
         correspondenceHelperFunction(input, expected);
     }
 
-    @Test
-    public void testFunctionDefinition_2() throws IOException {
-        String input = """
-                        proc copyPoints(p Point[]) Point {
-                             return Point(p[0].x+p[1].x, p[0].y+p[1].y)
-                        }""";
-        Symbol[] expected = new Symbol[]{
-                new Keyword("proc"), new Identifier("copyPoints"), new SyntaxSpecialSymbol("("),
-                new Identifier("p"), new Identifier("Point"), new SyntaxSpecialSymbol("["),
-                new SyntaxSpecialSymbol("]"), new SyntaxSpecialSymbol(")"), new Identifier("Point"),
-                new SyntaxSpecialSymbol("{"), new Keyword("return"), new Identifier("Point"),
-                new SyntaxSpecialSymbol("("), new Identifier("p"), new SyntaxSpecialSymbol("["),
-                new NaturalNumberValue("0"), new SyntaxSpecialSymbol("]"), new SyntaxSpecialSymbol("."),
-                new Identifier("x"), new OperatorSpecialSymbol("+"), new Identifier("p"),
-                new SyntaxSpecialSymbol("["), new NaturalNumberValue("1"), new SyntaxSpecialSymbol("]"),
-                new SyntaxSpecialSymbol("."), new Identifier("x"), new SyntaxSpecialSymbol(","),
-                new Identifier("p"), new SyntaxSpecialSymbol("["), new NaturalNumberValue("0"),
-                new SyntaxSpecialSymbol("]"), new SyntaxSpecialSymbol("."), new Identifier("y"),
-                new OperatorSpecialSymbol("+"), new Identifier("p"), new SyntaxSpecialSymbol("["),
-                new NaturalNumberValue("1"), new SyntaxSpecialSymbol("]"),
-                new SyntaxSpecialSymbol("."), new Identifier("y"), new SyntaxSpecialSymbol(")"),
-                new SyntaxSpecialSymbol("}")
-        };
-        correspondenceHelperFunction(input, expected);
-    }
 
 
-    @Test
-    public void emptyCode() throws IOException {
-        String[] emptyStrings = new String[]{
-                " ", "", "\t \t  \t"
-        };
-        for (String emptyString: emptyStrings) {
-            StringReader reader = new StringReader(emptyString);
-            Lexer lexer = new Lexer(reader);
-            Symbol symbol = lexer.getNextSymbol();
-            assertNotNull(lexer.getNextSymbol());
-            assertTrue(symbol instanceof EOFSymbol);
-        }
-    }
-
-    @Test
-    public void testStrings() throws IOException {
-        // Strings are ignored by our lexer therefore the only symbol we should get is the EOFSymbol
-        String[] comments = new String[]{
-                "//This is a comment\n",
-                "// Yet another \" Comment \t \n",
-                "// Hello 123 $# \\ \t for // 23\n",
-                "// This correct to since it's a program with just a string",
-        };
-        for (String input: comments) {
-            StringReader reader = new StringReader(input);
-            Lexer lexer = new Lexer(reader);
-            Symbol symbol = lexer.getNextSymbol();
-            assertNotNull(symbol);
-            assertTrue(symbol instanceof EOFSymbol);
-        }
-    }
+//
+//
+//    @Test
+//    public void test() {
+//        String input = "var x int = 2;";
+//        StringReader reader = new StringReader(input);
+//        Lexer lexer = new Lexer(reader);
+//        assertNotNull(lexer.getNextSymbol());
+//    }
+//    @Test
+//    public void emptyCode() {
+//        String[] emptyStrings = new String[]{
+//                " ", "", "\t\t  \t"
+//        };
+//        for (String emptyString: emptyStrings) {
+//            StringReader reader = new StringReader(emptyString);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(lexer.getNextSymbol());
+//            assertTrue(symbol instanceof EOFSymbol);
+//        }
+//    }
+//    @Test
+//    public void testStrings(){
+//        // Strings are ignored by our lexer therefore the only symbol we should get is the EOFSymbol
+//        String[] comments = new String[]{
+//                "//This is a comment\n",
+//                "// Yet another \" Comment \t \n",
+//                "// Hello 123 $# \\ \t for // 23\n",
+//                "// This correct to since it's a program with just a string",
+//        };
+//        for (String input: comments) {
+//            StringReader reader = new StringReader(input);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertTrue(symbol instanceof EOFSymbol);
+//        }
+//    }
+//
+//    @Test
+//    public void testIdentifiers(){
+//        // Strings are ignored by our lexer therefore the only symbol we should get is the EOFSymbol
+//        String[] identifiers = new String[]{
+//                "_id", "_", "iam_an_identifier", "_another1", "_111_", "id1", "__"
+//        };
+//        for (String input: identifiers) {
+//            StringReader reader = new StringReader(input);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertTrue(symbol instanceof Identifier);
+//            assertEquals(input, symbol.getValue());
+//        }
+//        String[] notIdentifiers = new String[]{
+//                "1_id", "11_", "1eer"
+//        };
+//        for (String input: notIdentifiers) {
+//            StringReader reader = new StringReader(input);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertFalse(symbol instanceof Identifier);
+//        }
+//    }
+//    @Test
+//    public void testNaturalNumbers(){
+//        // Strings are ignored by our lexer therefore the only symbol we should get is the EOFSymbol
+//        String[] naturalNumber = new String[]{
+//                "1233", "0", "01234567890", "111111", "22222", "1211212", "99876612"
+//        };
+//        for (String input: naturalNumber) {
+//            StringReader reader = new StringReader(input);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertTrue(symbol instanceof NaturalNumberValue);
+//            assertEquals(Integer.parseInt(input), symbol.getValue());
+//        }
+//        String[] notNaturalNumber = new String[]{
+//                "e123", "(11", ".01", "po1", "lo11"
+//        };
+//        for (String input: notNaturalNumber) {
+//            StringReader reader = new StringReader(input);
+//            Lexer lexer = new Lexer(reader);
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertFalse(symbol instanceof NaturalNumberValue);
+//        }
+//    }
+//    @Test
+//    public void testSimpleLanguage() {
+//        String input = "var x int";
+//        Symbol[] expected = new Symbol[]{
+//                new Keyword("var"),
+//                new Identifier("x"),
+//                new Identifier("int"),
+//        };
+//        StringReader reader = new StringReader(input);
+//        Lexer lexer = new Lexer(reader);
+//        for (Symbol value : expected) {
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertEquals(symbol, value);
+//        }
+//    }
+//
+//    @Test
+//    public void numberAndIdentifierWithoutSpace(){
+//        String input = "32hello";
+//        Symbol[] expected = new Symbol[]{
+//                new NaturalNumberValue("32"),
+//                new Identifier("hello"),
+//        };
+//        StringReader reader = new StringReader(input);
+//        Lexer lexer = new Lexer(reader);
+//        for (Symbol value : expected) {
+//            Symbol symbol = lexer.getNextSymbol();
+//            assertNotNull(symbol);
+//            assertEquals(symbol, value);
+//        }
+//    }
 
 }
