@@ -69,7 +69,7 @@ public class Lexer {
      * @param state The LexerState that will be modified
      * @param stringBuilder The stringBuilder normally empty
      * @return true if we should continue reading, false otherwise
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private boolean initState(LexerState state, StringBuilder stringBuilder) throws IOException, UnauthorizedLangTokenException{
         // Verify if EOF or do some cleaning
@@ -115,7 +115,7 @@ public class Lexer {
      * @param state The LexerState initialised using the initState method that will be updated
      * @param stringBuilder The stringBuilder that may be updated with next character if part of the same symbol
      * @return true if we should continue reading, false otherwise
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private boolean updateState(LexerState state, StringBuilder stringBuilder) throws IOException {
         int character = reader.read();
@@ -146,7 +146,7 @@ public class Lexer {
      * Skips all white spaces (space, tabulation /t and new line /n), if there has.
      * @param character The integer value of the starting character
      * @return true if there was whitespace, false otherwise
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private boolean skipIfWhiteSpace(int character) throws IOException{
         boolean isWhiteSpace = Character.isWhitespace(character);
@@ -163,7 +163,7 @@ public class Lexer {
      * Skips the comment (starting with //) if there is one.
      * @param character The integer value of the starting character
      * @return true if there was a comment, false otherwise
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private boolean skipIfComment(int character) throws IOException{
         if (character == '/'){
@@ -182,8 +182,8 @@ public class Lexer {
     /**
      * Puts the longest matching special symbol into the @stringBuilder.
      * @param character The starting character, already into the @stringBuilder
-     * @param stringBuilder
-     * @throws IOException
+     * @param stringBuilder current string
+     * @throws IOException on Reader
      */
     private void putLongestSpecialSymbol(int character, StringBuilder stringBuilder) throws IOException{
         if (SpecialSymbol.maybeComplexSpecialSymbol(character)){
@@ -199,7 +199,7 @@ public class Lexer {
     /**
      * Puts the string (starting and ending with '"', not '\"') into the @stringBuilder (without the starting/ending ").
      * @param stringBuilder should be empty
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private void putString(StringBuilder stringBuilder) throws IOException, UnauthorizedLangTokenException{
         int character = reader.read();
@@ -230,10 +230,10 @@ public class Lexer {
     /**
      * Verifies if @character is port of a new Symbol, stopping the current Symbol, based on the current @state.
      * NOTE: Checking that the character dot (.) is part of a REAL or not is done here.
-     * @param state
-     * @param character
+     * @param state State of the lexer
+     * @param character integer value of the candidate to stopping character
      * @return true if @character is a stopping character, false otherwise
-     * @throws IOException
+     * @throws IOException on Reader
      */
     private boolean isStoppingCharacter(LexerState state, int character) throws IOException{
         if (character == -1){
@@ -245,15 +245,10 @@ public class Lexer {
             if (character == '.' && state.isSomePossible(LexerState.NATURAL)){
                 character = reader.read();
                 reader.unread(character);
-                if (Character.isDigit(character)){
-                    return false; // dot (.) is part of a REAL, not a stopping character
-                }
+                return !Character.isDigit(character); // dot (.) is part of a REAL, not a stopping character
             }
             return true;
-        } else if (character == '"'){
-            return true;
-        }
-        return false;
+        } else return (character == '"');
     }
 }
 

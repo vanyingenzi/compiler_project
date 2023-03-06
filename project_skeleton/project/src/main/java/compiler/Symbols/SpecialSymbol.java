@@ -48,7 +48,7 @@ public abstract class SpecialSymbol extends Symbol {
 
     /**
      * Determines whether @candidate is a complex SpecialSymbol.
-     * @param candidate
+     * @param candidate a candidate string
      * @return true if @candidate is a complex SpecialSymbol, false otherwise
      */
     public static boolean isComplexSpecialSymbol(String candidate){
