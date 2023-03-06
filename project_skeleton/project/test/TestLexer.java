@@ -175,7 +175,7 @@ public class TestLexer {
     public void testRealNumberValue_simpleCase(){
         String[] realNumberValues = new String[]{
                 "123.0", "0.0", "12348.5874"
-        }; // TODO: Add verification of 64bits
+        };
         for (String input : realNumberValues){
             StringReader reader = new StringReader(input);
             Lexer lexer = new Lexer(reader);
@@ -207,7 +207,7 @@ public class TestLexer {
     }
 
     @Test
-    public void testStringValue_simpleCase(){ // TODO: Add unrecognized characters
+    public void testStringValue_simpleCase(){
         String[] stringValues = new String[]{
                 "\"Test 0f my string\"",
                 "\"Test of my string with backslash \\\\\"",
