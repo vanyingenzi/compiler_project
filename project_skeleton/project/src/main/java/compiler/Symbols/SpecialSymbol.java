@@ -34,7 +34,7 @@ public abstract class SpecialSymbol extends Symbol {
      * @return true if @candidate is a SpecialSymbol, false otherwise
      */
     public static boolean isSpecialSymbol(int candidate){
-        return singleSpecialSymbolSet.contains(candidate);
+        return singleSpecialSymbolSet.contains((char) candidate);
     }
 
     /**

@@ -18,18 +18,14 @@ public class Lexer {
      * Gets the next Symbol from the input reader of the Lexer.
      * @return next Symbol
      */
-    public Symbol getNextSymbol() throws UnauthorizedLangException {
-        try{
-            StringBuilder stringBuilder = new StringBuilder();
-            LexerState state = new LexerState();
-            boolean shouldContinue = initState(state, stringBuilder);
-            while (shouldContinue) {
-                shouldContinue = updateState(state, stringBuilder);
-            }
-            return getSymbolFromState(state, stringBuilder);
-        } catch (IOException ignored){
-            throw new RuntimeException("An exception occurred with the reader.");
+    public Symbol getNextSymbol() throws IOException, UnauthorizedLangTokenException {
+        StringBuilder stringBuilder = new StringBuilder();
+        LexerState state = new LexerState();
+        boolean shouldContinue = initState(state, stringBuilder);
+        while (shouldContinue) {
+            shouldContinue = updateState(state, stringBuilder);
         }
+        return getSymbolFromState(state, stringBuilder);
     }
 
     /**
@@ -75,7 +71,7 @@ public class Lexer {
      * @return true if we should continue reading, false otherwise
      * @throws IOException
      */
-    private boolean initState(LexerState state, StringBuilder stringBuilder) throws IOException{
+    private boolean initState(LexerState state, StringBuilder stringBuilder) throws IOException, UnauthorizedLangTokenException{
         // Verify if EOF or do some cleaning
         int character = reader.read();
         if (character == -1){
@@ -96,6 +92,7 @@ public class Lexer {
             putLongestSpecialSymbol(character, stringBuilder);
             return false;
         } else if (character == '"') {
+            state.limitPossibilityTo(LexerState.STRING);
             stringBuilder.deleteCharAt(0); // Starting/ending '"' should not be included in.
             putString(stringBuilder);
             return false;
@@ -109,7 +106,7 @@ public class Lexer {
             state.limitPossibilityTo(LexerState.IDENTIFIER);
             return true;
         }
-        throw new IOException("Error: No initiation of state possible.");
+        throw new UnauthorizedLangTokenException("Error: Unauthorized character: "+ ((char)character));
     }
 
     /**
@@ -204,23 +201,29 @@ public class Lexer {
      * @param stringBuilder should be empty
      * @throws IOException
      */
-    private void putString(StringBuilder stringBuilder) throws IOException{
+    private void putString(StringBuilder stringBuilder) throws IOException, UnauthorizedLangTokenException{
         int character = reader.read();
         while(character != -1 && character != '"'){
             if (character == '\\'){ // The sequence \\" should be treated as a '"' inside a string
                 int next_character = reader.read();
                 if (next_character == '"'){
                     stringBuilder.append('"');
+                } else if (next_character == '\\') {
+                    stringBuilder.append('\\');
+                } else if (next_character == 'n') {
+                    stringBuilder.append('\n');
+                } else if (next_character == 't') {
+                    stringBuilder.append('\t');
+                } else {
+                    throw new UnauthorizedLangTokenException("Error: Illegal escape character");
                 }
-                else {
-                    stringBuilder.append((char) character);
-                    reader.unread(next_character);
-                }
+            } else {
+                stringBuilder.append((char) character);
             }
             character = reader.read();
         }
         if (character == -1){
-            throw new IOException("Error: EOF reached before ending string.");
+            throw new UnauthorizedLangTokenException("Error: No mark quotes (\") ending for StringValue.");
         }
     }
 
