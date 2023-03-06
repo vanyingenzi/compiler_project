@@ -244,10 +244,10 @@ public class Lexer {
         } else if (SpecialSymbol.isSpecialSymbol(character)) {
             if (character == '.' && state.isSomePossible(LexerState.NATURAL)){
                 character = reader.read();
+                reader.unread(character);
                 if (Character.isDigit(character)){
                     return false; // dot (.) is part of a REAL, not a stopping character
                 }
-                reader.unread(character);
             }
             return true;
         } else if (character == '"'){

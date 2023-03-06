@@ -132,14 +132,21 @@ public class TestLexer {
     @Test
     public void testNaturalNumberValue_simpleCase(){
         String[] naturalNumberValues = new String[]{
-                "123", "0", "1234."
-        }; // TODO: Add verification of 32bits
-        for (String input : naturalNumberValues){
-            StringReader reader = new StringReader(input);
+                "123",
+                "0",
+                "1234."
+        };
+        String[] expectedValues = new String[]{
+                "123",
+                "0",
+                "1234"
+        };
+        for (int i = 0; i < naturalNumberValues.length; i++){
+            StringReader reader = new StringReader(naturalNumberValues[i]);
             Lexer lexer = new Lexer(reader);
             try{
                 Symbol symbol = lexer.getNextSymbol();
-                assertEquals(new NaturalNumberValue(input), symbol);
+                assertEquals(new NaturalNumberValue(expectedValues[i]), symbol);
             } catch (Exception e){
                 fail("Exception was thrown: "+ e);
             }
